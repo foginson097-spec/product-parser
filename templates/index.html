@@ -3,173 +3,318 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ app_name }} — сравнение цен на продукты</title>
+    <title>ПродСкаут — агрегатор цен + калькулятор калорий</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d1117; color: #c9d1d9; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-        .logo { font-size: 28px; font-weight: 900; color: #58a6ff; margin-bottom: 4px; }
-        .logo span { color: #f0883e; }
-        .subtitle { color: #8b949e; font-size: 13px; margin-bottom: 24px; }
-
-        /* Status panel */
-        .status-panel { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 16px; margin-bottom: 20px; }
-        .status-panel h2 { color: #8b949e; font-size: 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
-        .status-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
-        .status-card { background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 4px; }
-        .status-card .store-name { font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 6px; }
-        .status-card .status-line { font-size: 12px; color: #8b949e; }
-        .status-card .time { font-size: 11px; color: #484f58; }
-        .status-ok { color: #3fb950; }
-        .status-error { color: #f85149; }
-        .status-demo { color: #d2991d; }
-        .status-pending { color: #8b949e; }
-
-        .basket-editor { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
-        .basket-editor h2 { margin-bottom: 15px; color: #c9d1d9; font-size: 16px; }
-        .basket-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
-        .basket-row input { flex: 1; padding: 8px 12px; border-radius: 6px; border: 1px solid #30363d; background: #0d1117; color: #c9d1d9; }
-        .basket-row input[type=number] { flex: 0 0 100px; text-align: center; }
-        .basket-row button { background: #21262d; color: #f85149; border: 1px solid #30363d; padding: 8px 12px; border-radius: 6px; cursor: pointer; }
-        .btn-row { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
-        .btn { background: #21262d; color: #c9d1d9; border: 1px solid #30363d; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; }
-        .btn-primary { background: #238636; color: #fff; border-color: #238636; }
-        .btn-primary:hover { background: #2ea043; }
-        .btn:hover { opacity: 0.9; }
-        .btn-warn { background: #9e6a03; color: #fff; border-color: #9e6a03; }
-
-        .results { margin-top: 20px; }
-        .store-card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 20px; margin-bottom: 15px; }
-        .store-card.best { border-color: #238636; }
-        .store-card h3 { color: #58a6ff; margin-bottom: 5px; font-size: 18px; }
-        .store-card .total { font-size: 28px; font-weight: bold; color: #58a6ff; margin: 8px 0; }
-        .store-card.best .total { color: #3fb950; }
-        .store-card .calories { margin-bottom: 10px; font-size: 14px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #21262d; font-size: 13px; }
-        th { color: #8b949e; font-weight: normal; font-size: 11px; text-transform: uppercase; }
-        td a { color: #58a6ff; text-decoration: none; }
-        td a:hover { text-decoration: underline; }
-        .missing { color: #f85149; font-style: italic; font-size: 13px; }
-        .loading { text-align: center; padding: 40px; color: #8b949e; }
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0d1117;color:#c9d1d9;min-height:100vh}
+        .container{max-width:1000px;margin:0 auto;padding:12px}
+        .logo{font-size:22px;font-weight:900;color:#58a6ff}.logo span{color:#f0883e}
+        .sub{color:#8b949e;font-size:12px;margin-bottom:16px}
+        .card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:14px;margin-bottom:12px}
+        .card h2{font-size:15px;color:#c9d1d9;margin-bottom:10px}
+        .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+        input,select,button{padding:7px 10px;border-radius:6px;border:1px solid #30363d;background:#0d1117;color:#c9d1d9;font-size:13px}
+        button{cursor:pointer;white-space:nowrap}
+        .btn-sm{padding:5px 10px;font-size:12px}
+        .btn-go{background:#238636;color:#fff;border-color:#238636}
+        .btn-go:hover{background:#2ea043}
+        .btn-del{background:#21262d;color:#f85149;padding:4px 8px}
+        .tbl{width:100%;border-collapse:collapse;font-size:12px}
+        .tbl th,.tbl td{padding:7px 10px;text-align:left;border-bottom:1px solid #21262d}
+        .tbl th{color:#8b949e;font-weight:400;font-size:11px;text-transform:uppercase}
+        .tbl td a{color:#58a6ff;text-decoration:none}
+        .tbl td a:hover{text-decoration:underline}
+        .best td{background:#0d2b1a}
+        .bar-wrap{height:8px;background:#21262d;border-radius:4px;margin:6px 0;overflow:hidden}
+        .bar-fill{height:100%;background:#238636;border-radius:4px;transition:width .3s}
+        .bar-warn{background:#9e6a03!important}
+        .bar-over{background:#f85149!important}
+        .st-summary{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:8px 0}
+        .st-card{background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:8px 10px}
+        .st-card .s-name{font-weight:600;font-size:13px}
+        .st-card .s-total{font-size:16px;font-weight:700;color:#58a6ff}
+        .st-card .s-kcal{font-size:11px;color:#8b949e}
+        .st-best{border-color:#238636}.st-best .s-total{color:#3fb950}
+        .missing{color:#f85149;font-size:12px}
+        .calc-row{display:flex;gap:6px;align-items:center}
+        .calc-row input{width:90px}
+        .tabs{display:flex;gap:4px;margin-bottom:10px}
+        .tab{padding:6px 14px;border-radius:6px;font-size:13px;border:1px solid #30363d;background:#0d1117;color:#8b949e;cursor:pointer}
+        .tab-active{background:#1f6feb;color:#fff;border-color:#1f6feb}
+        .saved-list{font-size:12px}.saved-list a{color:#58a6ff;cursor:pointer;margin-right:10px}
+        .status{font-size:11px;color:#8b949e;margin-top:8px}
+        @media(max-width:600px){
+            .container{padding:8px}
+            .row{flex-direction:column;align-items:stretch}
+            .calc-row{flex-wrap:wrap}
+            .tbl{font-size:10px}
+            .tbl th,.tbl td{padding:4px 6px}
+        }
     </style>
 </head>
 <body>
 <div class="container">
-    <div class="logo">{{ app_name }}<span>.app</span></div>
-    <p class="subtitle">{{ app_subtitle }}</p>
+    <div class="logo">ПродСкаут<span>.app</span></div>
+    <div class="sub">Агрегатор цен + калькулятор калорий. Дзержинск, 2500 ккал/день</div>
 
-    <!-- Status Panel -->
-    <div class="status-panel">
-        <h2>📡 Статус парсинга</h2>
-        <div class="status-grid" id="status-grid">
-            <div class="status-card"><span class="status-pending">Загрузка...</span></div>
-        </div>
+    <div class="card" id="status-panel">
+        <div class="status" id="status-text">Загрузка статуса...</div>
     </div>
 
-    <div class="basket-editor">
-        <h2>🛒 Состав корзины (грамм на день, норма: {{ daily_calories }} ккал)</h2>
-        <div id="basket-items">
-            {% for name, grams in default_basket.items() %}
-            <div class="basket-row">
-                <input type="text" value="{{ name }}" placeholder="Продукт">
-                <input type="number" value="{{ grams }}" placeholder="Грамм" min="0">
-                <button onclick="this.parentElement.remove()">✕</button>
+    <div class="tabs">
+        <div class="tab tab-active" onclick="switchTab('basket')">🛒 Корзина</div>
+        <div class="tab" onclick="switchTab('search')">🔍 Поиск</div>
+        <div class="tab" onclick="switchTab('calc')">🧮 Калькулятор</div>
+    </div>
+
+    <!-- BASKET TAB -->
+    <div id="tab-basket">
+        <div class="card">
+            <h2>Цель: 2500 ккал</h2>
+            <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+                <span id="kcal-label">0 / 2500 ккал</span>
+                <span id="kcal-remain">осталось 2500</span>
             </div>
-            {% endfor %}
+            <div class="bar-wrap"><div class="bar-fill" id="kcal-bar" style="width:0%"></div></div>
+            <div style="font-size:13px;margin-bottom:10px" id="basket-total">Сумма: 0 ₽</div>
+            <div class="st-summary" id="store-summary"></div>
         </div>
-        <div class="btn-row">
-            <button class="btn" onclick="addBasketRow()">+ Добавить</button>
-            <button class="btn btn-primary" onclick="calculate()">🔍 Сравнить цены</button>
-            <button class="btn btn-warn" onclick="scrapeAll()">🔄 Обновить цены</button>
+
+        <div class="card">
+            <h2>Товары в корзине</h2>
+            <div class="row">
+                <input type="text" id="basket-add-name" placeholder="Продукт (название)" style="flex:2">
+                <input type="number" id="basket-add-grams" placeholder="Грамм" value="200" min="0" style="width:80px">
+                <button class="btn-go btn-sm" onclick="addToBasket()">+ Добавить</button>
+            </div>
+            <table class="tbl" id="basket-items"><tr><th>Продукт</th><th>г</th><th>ккал</th><th>₽/уп</th><th>Магазин</th><th></th></tr></table>
+            <div class="row" style="margin-top:10px">
+                <button class="btn-sm" onclick="saveBasketNamed()">💾 Сохранить</button>
+                <select id="saved-select" onchange="loadBasket(this.value)" style="font-size:12px"><option value="">Загрузить...</option></select>
+                <button class="btn-sm btn-del" onclick="clearBasket()">🗑 Очистить</button>
+            </div>
         </div>
     </div>
 
-    <div id="results" class="results">
-        <div class="loading">Добавьте продукты и нажмите «Сравнить цены»</div>
+    <!-- SEARCH TAB -->
+    <div id="tab-search" style="display:none">
+        <div class="card">
+            <div class="row">
+                <input type="text" id="search-query" placeholder="Поиск: молоко, хлеб, курица..." style="flex:3" onkeyup="if(event.key==='Enter')doSearch()">
+                <button class="btn-go" onclick="doSearch()">Найти</button>
+                <select id="sort-by" onchange="doSearch()"><option value="price">Цена ↑</option><option value="-price">Цена ↓</option><option value="kcal">Ккал ↑</option><option value="-kcal">Ккал ↓</option></select>
+            </div>
+            <div class="row" style="font-size:12px" id="store-filters"></div>
+            <table class="tbl" id="search-results"><tr><th>Продукт</th><th>Магазин</th><th>Цена</th><th>Вес</th><th>ккал/100г</th><th></th></tr></table>
+        </div>
+    </div>
+
+    <!-- CALC TAB -->
+    <div id="tab-calc" style="display:none">
+        <div class="card">
+            <h2>Калькулятор калорий</h2>
+            <div class="calc-row" style="margin-bottom:8px">
+                <span>ккал/100г:</span><input type="number" id="calc-kcal" placeholder="ккал" value="250" min="0">
+                <span>грамм:</span><input type="number" id="calc-grams" placeholder="г" value="100" min="0" oninput="doCalc()">
+                <span>= <b id="calc-result">250</b> ккал</span>
+            </div>
+            <div class="calc-row">
+                <span>Нужно <input type="number" id="calc-target" placeholder="ккал" value="500" min="0" style="width:70px"> ккал из продукта с </span>
+                <input type="number" id="calc-kcal2" placeholder="ккал/100г" value="250" min="1" style="width:70px">
+                <span>= <b id="calc-grams2">200</b> г</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- STORE DETAIL -->
+    <div class="card" id="basket-compare-card">
+        <h2>Сравнение по магазинам</h2>
+        <table class="tbl" id="store-compare"><tr><th>Магазин</th><th>Сумма</th><th>ккал</th><th>Товаров</th></tr></table>
     </div>
 </div>
 
 <script>
-async function loadStatus() {
-    try {
-        const resp = await fetch('/api/status');
-        const stores = await resp.json();
-        let html = '';
-        stores.forEach(s => {
-            const time = s.last_scrape ? new Date(s.last_scrape).toLocaleString('ru-RU') : 'никогда';
-            const statusClass = s.status === 'ok' ? 'status-ok' : s.status === 'error' ? 'status-error' : s.status === 'demo' ? 'status-demo' : 'status-pending';
-            html += `<div class="status-card">
-                <div class="store-name">${s.icon} ${s.name}</div>
-                <div class="status-line ${statusClass}">${s.products_scraped} товаров</div>
-                <div class="time">${time}</div>
-            </div>`;
+const DAILY = 2500;
+let basket = JSON.parse(localStorage.getItem('prodscout_basket')||'[]');
+let allProducts = [];
+let allPrices = [];
+
+async function init(){
+    await loadStatus();
+    await loadProducts();
+    switchTab('basket');
+}
+function switchTab(t){
+    document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('tab-active',['basket','search','calc'][i]===t));
+    document.getElementById('tab-basket').style.display=t==='basket'?'':'none';
+    document.getElementById('tab-search').style.display=t==='search'?'':'none';
+    document.getElementById('tab-calc').style.display=t==='calc'?'':'none';
+    if(t==='search'){renderStoreFilters();doSearch();}
+    if(t==='calc')doCalc();
+}
+
+async function loadStatus(){
+    try{
+        const r=await fetch('/api/status');const s=await r.json();
+        let h='📡 ';
+        s.forEach(x=>{
+            const t=x.last_scrape?new Date(x.last_scrape).toLocaleString('ru-RU'):'никогда';
+            h+=`${x.icon} ${x.name}: ${x.products_scraped} тов. (${t}) | `;
         });
-        document.getElementById('status-grid').innerHTML = html;
-    } catch(e) { document.getElementById('status-grid').innerHTML = '<div class="status-card"><span class="status-error">Ошибка</span></div>'; }
-}
-loadStatus(); setInterval(loadStatus, 30000);
-
-function getBasketItems() {
-    const rows = document.querySelectorAll('#basket-items .basket-row');
-    const items = {};
-    rows.forEach(row => {
-        const inputs = row.querySelectorAll('input');
-        const name = inputs[0].value.trim();
-        const grams = parseInt(inputs[1].value) || 0;
-        if (name && grams > 0) items[name] = grams;
-    });
-    return items;
+        document.getElementById('status-text').textContent=h.replace(/\| $/,'');
+    }catch(e){document.getElementById('status-text').textContent='Ошибка загрузки';}
 }
 
-function addBasketRow() {
-    const div = document.createElement('div'); div.className = 'basket-row';
-    div.innerHTML = '<input type="text" placeholder="Продукт"><input type="number" value="200" placeholder="Грамм" min="0"><button onclick="this.parentElement.remove()">✕</button>';
-    document.getElementById('basket-items').appendChild(div);
+async function loadProducts(){
+    try{
+        const r=await fetch('/api/products');allProducts=await r.json();
+        // Build price map
+        const pr=await fetch('/api/basket/calculate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:{}})});
+        // We'll load prices on demand
+    }catch(e){}
 }
 
-async function calculate() {
-    const items = getBasketItems();
-    if (!Object.keys(items).length) { alert('Добавьте продукты'); return; }
-    document.getElementById('results').innerHTML = '<div class="loading">Считаем...</div>';
-    const resp = await fetch('/api/basket/calculate', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({items}) });
-    const data = await resp.json();
-    if (!data.basket?.length) { document.getElementById('results').innerHTML = '<div class="loading">Нет данных</div>'; return; }
-
-    let html = '';
-    data.basket.forEach((store, idx) => {
-        const best = idx === 0 && store.total > 0 ? 'best' : '';
-        const calOk = store.calories >= data.daily_target * 0.7;
-        html += `<div class="store-card ${best}">
-            <h3>${idx === 0 && store.total > 0 ? '⭐ ' : ''}${store.store} (${store.city})</h3>
-            <div class="total">${store.total.toFixed(2)} ₽</div>
-            <div class="calories" style="color:${calOk ? '#3fb950' : '#f85149'}">🔥 ${store.calories} / ${data.daily_target} ккал</div>`;
-        if (store.missing.length) html += `<p class="missing">❌ ${store.missing.join(', ')}</p>`;
-        if (store.items.length) {
-            html += '<table><tr><th>Продукт</th><th>Грамм</th><th>Упак</th><th>Цена/уп</th><th>Стоимость</th><th>ккал/100г</th></tr>';
-            store.items.forEach(item => {
-                const link = item.url ? `<a href="${item.url}" target="_blank" title="Открыть в магазине">${item.product}</a>` : item.product;
-                html += `<tr><td>${link}</td><td>${item.grams}г</td><td>${item.packs}</td><td>${item.price_per_pack}₽</td><td>${item.cost}₽</td><td>${item.calories_per_100g}</td></tr>`;
-            });
-            html += '</table>';
-        }
-        html += '</div>';
-    });
-    document.getElementById('results').innerHTML = html;
-}
-
-async function scrapeAll() {
-    document.getElementById('results').innerHTML = '<div class="loading">🔄 Парсим цены через Camofox...</div>';
-    const resp = await fetch('/api/status'); const stores = await resp.json();
-    for (const s of stores) {
-        document.getElementById('results').innerHTML = `<div class="loading">🔄 ${s.name}...</div>`;
-        try {
-            await fetch('/api/scrape', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({store_id: s.id}) });
-        } catch(e) { console.error(e); }
+async function doSearch(){
+    const q=(document.getElementById('search-query').value||'').toLowerCase().trim();
+    const sort=document.getElementById('sort-by').value;
+    // Filter products
+    let results=allProducts.filter(p=>!q||p.name.toLowerCase().includes(q));
+    // Get prices for each result
+    let out=[];
+    for(const p of results){
+        const price=p.price||0;
+        if(!q&&!price)continue;
+        out.push({name:p.name,store:'—',price:p.price,weight:p.weight_grams,kcal:p.calories_per_100g,id:p.id});
     }
-    loadStatus();
-    calculate();
+    // Sort
+    if(sort==='price')out.sort((a,b)=>(a.price||9999)-(b.price||9999));
+    else if(sort==='-price')out.sort((a,b)=>(b.price||0)-(a.price||0));
+    else if(sort==='kcal')out.sort((a,b)=>(a.kcal||9999)-(b.kcal||9999));
+    else if(sort==='-kcal')out.sort((a,b)=>(b.kcal||0)-(a.kcal||0));
+
+    let h='<tr><th>Продукт</th><th>Цена</th><th>Вес</th><th>ккал/100г</th><th></th></tr>';
+    out.slice(0,50).forEach(p=>{
+        h+=`<tr><td>${p.name}</td><td>${p.price?p.price+'₽':'—'}</td><td>${p.weight||'—'}г</td><td>${p.kcal||'—'}</td><td><button class="btn-go btn-sm" onclick="addFromSearch('${p.name.replace(/'/g,"\\'")}',${p.weight||200},${p.kcal||0},${p.price||0})">+</button></td></tr>`;
+    });
+    document.getElementById('search-results').innerHTML=h||'<tr><td colspan="5">Ничего не найдено</td></tr>';
 }
+
+function addFromSearch(name,weight,kcal,price){
+    basket.push({name,grams:Math.min(weight||200,1000),kcal_per_100g:kcal,price_per_pack:price,store:'Вручную'});
+    saveBasket();renderBasket();
+}
+
+let storeFilters=[];
+function renderStoreFilters(){
+    let h='Фильтр: ';
+    ['Пятёрочка','Магнит','Spar','Перекрёсток','ВкусВилл','Бристоль'].forEach(s=>{
+        const ck=storeFilters.includes(s)?'checked':'';
+        h+=`<label style="margin-right:8px"><input type="checkbox" ${ck} onchange="toggleFilter('${s}')">${s}</label>`;
+    });
+    document.getElementById('store-filters').innerHTML=h;
+}
+function toggleFilter(s){if(storeFilters.includes(s))storeFilters=storeFilters.filter(x=>x!==s);else storeFilters.push(s);doSearch();}
+
+function addToBasket(){
+    const n=document.getElementById('basket-add-name').value.trim();
+    const g=parseInt(document.getElementById('basket-add-grams').value)||200;
+    if(!n)return;
+    // Find product in allProducts
+    const p=allProducts.find(x=>x.name.toLowerCase().includes(n.toLowerCase()));
+    basket.push({name:n,grams:g,kcal_per_100g:p?.calories_per_100g||0,price_per_pack:p?.price||0,store:p?'БД':'Вручную'});
+    document.getElementById('basket-add-name').value='';
+    saveBasket();renderBasket();
+}
+
+function removeBasketItem(i){basket.splice(i,1);saveBasket();renderBasket();}
+function clearBasket(){basket=[];saveBasket();renderBasket();}
+
+function saveBasket(){
+    localStorage.setItem('prodscout_basket',JSON.stringify(basket));
+    updateSavedList();
+}
+function loadBasket(key){
+    if(!key)return;
+    const d=JSON.parse(localStorage.getItem('prodscout_'+key)||'[]');
+    basket=d;saveBasket();renderBasket();
+}
+function updateSavedList(){
+    const s=document.getElementById('saved-select');
+    let h='<option value="">Загрузить...</option>';
+    for(let i=0;i<localStorage.length;i++){
+        const k=localStorage.key(i);
+        if(k.startsWith('prodscout_')&&k!=='prodscout_basket'){
+            h+=`<option value="${k.replace('prodscout_','')}">${k.replace('prodscout_','')}</option>`;
+        }
+    }
+    s.innerHTML=h;
+}
+
+function renderBasket(){
+    let totalKcal=0,totalPrice=0;
+    let h='<tr><th>Продукт</th><th>г</th><th>ккал</th><th>₽/уп</th><th>Магазин</th><th></th></tr>';
+    basket.forEach((item,i)=>{
+        const k=item.kcal_per_100g?Math.round(item.grams/100*item.kcal_per_100g):0;
+        const p=item.price_per_pack||0;
+        totalKcal+=k;totalPrice+=p;
+        h+=`<tr><td>${item.name}</td><td>${item.grams}</td><td>${k}</td><td>${p}₽</td><td>${item.store}</td><td><button class="btn-del" onclick="removeBasketItem(${i})">✕</button></td></tr>`;
+    });
+    document.getElementById('basket-items').innerHTML=h;
+    document.getElementById('kcal-label').textContent=`${totalKcal} / ${DAILY} ккал`;
+    document.getElementById('kcal-remain').textContent=`осталось ${Math.max(0,DAILY-totalKcal)}`;
+    const pct=Math.min(100,(totalKcal/DAILY)*100);
+    const bar=document.getElementById('kcal-bar');
+    bar.style.width=pct+'%';
+    bar.className='bar-fill'+(pct>95?' bar-over':pct>80?' bar-warn':'');
+    document.getElementById('basket-total').textContent=`Сумма: ${totalPrice.toFixed(2)} ₽`;
+
+    // Store comparison
+    loadStoreComparison();
+}
+
+async function loadStoreComparison(){
+    if(!basket.length){document.getElementById('store-compare').innerHTML='<tr><th>Магазин</th><th>Сумма</th><th>ккал</th></tr>';return;}
+    const items={};basket.forEach(b=>{items[b.name]=b.grams;});
+    try{
+        const r=await fetch('/api/basket/calculate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items})});
+        const d=await r.json();
+        let h='<tr><th>Магазин</th><th>Сумма</th><th>ккал</th><th>Товаров</th></tr>';
+        d.basket.forEach((s,i)=>{
+            const best=i===0&&s.total>0;
+            h+=`<tr class="${best?'best':''}"><td>${best?'⭐ ':''}${s.store}</td><td>${s.total.toFixed(2)}₽</td><td>${s.calories}</td><td>${s.items.length}</td></tr>`;
+            // Update store summary cards
+        });
+        document.getElementById('store-compare').innerHTML=h;
+        // Summary cards
+        let sh='';
+        d.basket.forEach(s=>{
+            const best=s.total===d.basket[0].total&&s.total>0;
+            sh+=`<div class="st-card ${best?'st-best':''}">${best?'⭐ ':''}<span class="s-name">${s.store}</span><br><span class="s-total">${s.total.toFixed(2)}₽</span><br><span class="s-kcal">${s.calories} ккал</span></div>`;
+        });
+        document.getElementById('store-summary').innerHTML=sh;
+    }catch(e){}
+}
+
+function doCalc(){
+    const kcal=parseFloat(document.getElementById('calc-kcal').value)||0;
+    const grams=parseFloat(document.getElementById('calc-grams').value)||0;
+    document.getElementById('calc-result').textContent=Math.round(grams/100*kcal);
+    const target=parseFloat(document.getElementById('calc-target').value)||0;
+    const kcal2=parseFloat(document.getElementById('calc-kcal2').value)||1;
+    document.getElementById('calc-grams2').textContent=Math.round(target/kcal2*100);
+}
+
+function saveBasket(){
+    localStorage.setItem('prodscout_basket',JSON.stringify(basket));
+}
+function saveBasketNamed(){
+    const name=prompt('Название корзины:');
+    if(!name)return;
+    localStorage.setItem('prodscout_'+name,JSON.stringify(basket));
+    updateSavedList();
+}
+
+init();
 </script>
 </body>
 </html>
