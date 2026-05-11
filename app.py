@@ -193,6 +193,128 @@ def trigger_scrape():
             raise
     return jsonify(result)
 
+@app.route('/api/basket/optimize', methods=['POST'])
+def optimize_basket():
+    """Найти оптимальную комбинацию: какой товар в каком магазине купить."""
+    data = request.get_json()
+    items = data.get('items', {})
+    stores = Store.query.filter_by(active=True).all()
+    all_products = Product.query.all()
+    
+    # For each product, find the cheapest store
+    recommendations = []
+    total_optimal = 0.0
+    total_calories = 0.0
+    
+    for product_name, grams_needed in items.items():
+        best_price = float('inf')
+        best_store = None
+        best_item = None
+        
+        for store in stores:
+            product = None
+            search = product_name.lower().strip()
+            for p in all_products:
+                if search in p.name.lower():
+                    product = p; break
+            
+            if not product: continue
+            
+            price = Price.query.filter_by(product_id=product.id, store_id=store.id, in_stock=True)\
+                .order_by(Price.scraped_at.desc()).first()
+            if not price: continue
+            
+            if product.weight_grams and product.weight_grams > 0:
+                packs = grams_needed / product.weight_grams
+            else:
+                packs = 1
+            
+            cost = packs * price.price_rub
+            if cost < best_price:
+                best_price = cost
+                best_store = store.name
+                best_item = {
+                    'product': product.name,
+                    'store': store.name,
+                    'grams': grams_needed,
+                    'packs': round(packs, 2),
+                    'price_per_pack': price.price_rub,
+                    'cost': round(cost, 2),
+                    'url': price.url or '',
+                    'calories_per_100g': product.calories_per_100g or 0,
+                }
+        
+        if best_item:
+            recommendations.append(best_item)
+            total_optimal += best_price
+            if best_item['calories_per_100g']:
+                total_calories += (grams_needed / 100) * best_item['calories_per_100g']
+    
+    # Also compute per-store totals for comparison
+    store_totals = []
+    for store in stores:
+        total = 0.0
+        for rec in recommendations:
+            if rec['store'] == store.name:
+                total += rec['cost']
+            else:
+                # Find same product at this store
+                for p in all_products:
+                    search = rec['product'].lower()
+                    if search in p.name.lower():
+                        price = Price.query.filter_by(product_id=p.id, store_id=store.id, in_stock=True)\
+                            .order_by(Price.scraped_at.desc()).first()
+                        if price:
+                            grams = rec['grams']
+                            packs = grams / p.weight_grams if p.weight_grams else 1
+                            total += packs * price.price_rub
+                        break
+        
+        store_totals.append({'store': store.name, 'total': round(total, 2)})
+    
+    store_totals.sort(key=lambda x: x['total'] if x['total'] > 0 else float('inf'))
+    
+    return jsonify({
+        'recommendations': recommendations,
+        'total_best': round(total_optimal, 2),
+        'total_calories': round(total_calories),
+        'store_totals': store_totals,
+        'daily_target': DAILY_CALORIES
+    })
+
+@app.route('/api/product/<int:product_id>', methods=['GET'])
+def product_detail(product_id):
+    """Детальная информация о продукте + история цен."""
+    product = Product.query.get(product_id)
+    if not product: return jsonify({'error': 'not found'}), 404
+    
+    prices = Price.query.filter_by(product_id=product_id).order_by(Price.scraped_at.desc()).all()
+    price_history = []
+    for pr in prices:
+        store = Store.query.get(pr.store_id)
+        price_history.append({
+            'store': store.name if store else 'Unknown',
+            'price': pr.price_rub,
+            'date': pr.scraped_at.isoformat() if pr.scraped_at else None,
+            'url': pr.url or '',
+            'in_stock': pr.in_stock
+        })
+    
+    cat = Category.query.get(product.category_id) if product.category_id else None
+    return jsonify({
+        'id': product.id,
+        'name': product.name,
+        'brand': product.brand,
+        'weight_grams': product.weight_grams,
+        'calories_per_100g': product.calories_per_100g,
+        'proteins': product.proteins_per_100g,
+        'fats': product.fats_per_100g,
+        'carbs': product.carbs_per_100g,
+        'composition': product.composition,
+        'category': cat.name if cat else '',
+        'price_history': price_history
+    })
+
 @app.route('/api/products/add', methods=['POST'])
 def add_product():
     """Добавить продукт с ценой (используется Camofox-парсером)."""

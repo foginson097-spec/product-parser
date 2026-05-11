@@ -104,6 +104,10 @@
                 <button class="btn-go" onclick="doSearch()">Найти</button>
                 <select id="sort-by" onchange="doSearch()"><option value="price">Цена ↑</option><option value="-price">Цена ↓</option><option value="kcal">Ккал ↑</option><option value="-kcal">Ккал ↓</option></select>
             </div>
+            <div class="row" style="font-size:12px">
+                ккал/100г: <input type="number" id="kcal-min" placeholder="мин" value="" style="width:65px" onchange="doSearch()">
+                — <input type="number" id="kcal-max" placeholder="макс" value="" style="width:65px" onchange="doSearch()">
+            </div>
             <div class="row" style="font-size:12px" id="store-filters"></div>
             <table class="tbl" id="search-results"><tr><th>Продукт</th><th>Магазин</th><th>Цена</th><th>Вес</th><th>ккал/100г</th><th></th></tr></table>
         </div>
@@ -128,8 +132,17 @@
 
     <!-- STORE DETAIL -->
     <div class="card" id="basket-compare-card">
-        <h2>Сравнение по магазинам</h2>
+        <h2>Сравнение по магазинам <button class="btn-go btn-sm" onclick="optimizeBasket()" style="float:right">🧠 Оптимальная комбинация</button></h2>
         <table class="tbl" id="store-compare"><tr><th>Магазин</th><th>Сумма</th><th>ккал</th><th>Товаров</th></tr></table>
+        <div id="optimize-result" style="margin-top:8px;font-size:13px;display:none"></div>
+    </div>
+
+    <!-- Product Detail Modal -->
+    <div id="prod-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:99;align-items:center;justify-content:center">
+        <div class="card" style="max-width:500px;max-height:80vh;overflow-y:auto">
+            <div style="display:flex;justify-content:space-between;align-items:center"><h2 id="modal-title"></h2><button onclick="document.getElementById('prod-modal').style.display='none'">✕</button></div>
+            <div id="modal-body"></div>
+        </div>
     </div>
 </div>
 
@@ -181,9 +194,14 @@ async function doSearch(){
     let results=allProducts.filter(p=>!q||p.name.toLowerCase().includes(q));
     // Get prices for each result
     let out=[];
+    const kcalMin=parseFloat(document.getElementById('kcal-min').value)||0;
+    const kcalMax=parseFloat(document.getElementById('kcal-max').value)||9999;
     for(const p of results){
         const price=p.price||0;
+        const kcal=p.calories_per_100g||0;
         if(!q&&!price)continue;
+        if(kcalMin>0&&kcal<kcalMin)continue;
+        if(kcalMax<9999&&kcal>kcalMax)continue;
         out.push({name:p.name,store:'—',price:p.price,weight:p.weight_grams,kcal:p.calories_per_100g,id:p.id});
     }
     // Sort
@@ -306,6 +324,45 @@ function doCalc(){
 
 function saveBasket(){
     localStorage.setItem('prodscout_basket',JSON.stringify(basket));
+}
+
+async function optimizeBasket(){
+    if(!basket.length)return;
+    const items={};basket.forEach(b=>{items[b.name]=b.grams;});
+    const r=await fetch('/api/basket/optimize',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items})});
+    const d=await r.json();
+    let h=`
+        <div class="card" style="margin-top:8px;border-color:#238636">
+        <b>🧠 Оптимальная корзина: ${d.total_best.toFixed(2)}₽ (${d.total_calories} ккал)</b><br><br>
+        <table class="tbl"><tr><th>Продукт</th><th>Где купить</th><th>Грамм</th><th>Цена</th></tr>`;
+    d.recommendations.forEach(r=>{
+        h+=`<tr><td><a href="#" onclick="showProduct('${r.product.replace(/'/g,"\\'")}')" style="color:#58a6ff">${r.product}</a></td><td>${r.store}</td><td>${r.grams}г</td><td>${r.cost}₽</td></tr>`;
+    });
+    h+=`</table><br><b>По магазинам:</b> `;
+    d.store_totals.forEach((s,i)=>h+=`${i>0?' | ':''}${s.store}: ${s.total.toFixed(2)}₽`);
+    h+='</div>';
+    document.getElementById('optimize-result').innerHTML=h;
+    document.getElementById('optimize-result').style.display='block';
+}
+
+function showProduct(name){
+    const p=allProducts.find(x=>x.name===name||x.name.toLowerCase().includes(name.toLowerCase()));
+    if(!p)return;
+    fetch('/api/product/'+p.id).then(r=>r.json()).then(d=>{
+        document.getElementById('modal-title').textContent=d.name;
+        let h=`<p><b>Бренд:</b> ${d.brand||'—'} | <b>Вес:</b> ${d.weight_grams||'—'}г</p>`;
+        h+=`<p><b>ккал/100г:</b> ${d.calories_per_100g||'—'} | Б:${d.proteins||'—'} Ж:${d.fats||'—'} У:${d.carbs||'—'}</p>`;
+        h+=`<p><b>Состав:</b> ${d.composition||'—'}</p>`;
+        h+=`<p><b>Категория:</b> ${d.category||'—'}</p>`;
+        h+=`<h3>История цен</h3><table class="tbl"><tr><th>Магазин</th><th>Цена</th><th>Дата</th></tr>`;
+        (d.price_history||[]).forEach(ph=>{
+            const dt=ph.date?new Date(ph.date).toLocaleString('ru-RU'):'—';
+            h+=`<tr><td>${ph.store}</td><td>${ph.price}₽</td><td>${dt}</td></tr>`;
+        });
+        h+='</table>';
+        document.getElementById('modal-body').innerHTML=h;
+        document.getElementById('prod-modal').style.display='flex';
+    });
 }
 function saveBasketNamed(){
     const name=prompt('Название корзины:');
