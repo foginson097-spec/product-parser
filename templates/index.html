@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Корзина еды — сравнение цен</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #1a1a2e; color: #e0e0e0; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        h1 { color: #e94560; margin-bottom: 10px; }
+        .subtitle { color: #888; margin-bottom: 30px; }
+
+        .basket-editor { background: #16213e; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+        .basket-editor h2 { margin-bottom: 15px; color: #0f3460; }
+        .basket-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
+        .basket-row input { flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #333; background: #0f3460; color: #fff; }
+        .basket-row input[type=number] { flex: 0 0 100px; }
+        .basket-row button { background: #e94560; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
+        .basket-row button:hover { background: #c73a52; }
+        .btn-row { display: flex; gap: 10px; margin-top: 10px; }
+        .btn { background: #0f3460; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        .btn-primary { background: #e94560; }
+        .btn-primary:hover { background: #c73a52; }
+        .btn:hover { opacity: 0.9; }
+
+        .results { margin-top: 20px; }
+        .store-card { background: #16213e; border-radius: 12px; padding: 20px; margin-bottom: 15px; border-left: 4px solid #e94560; }
+        .store-card.best { border-left-color: #00c853; }
+        .store-card h3 { color: #e94560; margin-bottom: 5px; }
+        .store-card .total { font-size: 24px; font-weight: bold; color: #e94560; margin: 10px 0; }
+        .store-card.best .total { color: #00c853; }
+        .store-card .calories { color: #888; margin-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #0f3460; }
+        th { color: #888; font-weight: normal; font-size: 12px; }
+        .missing { color: #ff6b6b; font-style: italic; }
+        .composition { font-size: 11px; color: #666; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .loading { text-align: center; padding: 40px; color: #888; }
+
+        @media (max-width: 768px) {
+            .basket-row { flex-wrap: wrap; }
+            .container { padding: 10px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🛒 Корзина еды</h1>
+    <p class="subtitle">Сравнение цен на продукты в магазинах Нижнего Новгорода. Дневная норма: {{ daily_calories }} ккал.</p>
+
+    <div class="basket-editor">
+        <h2>Состав корзины (грамм на день)</h2>
+        <div id="basket-items">
+            {% for name, grams in default_basket.items() %}
+            <div class="basket-row">
+                <input type="text" value="{{ name }}" placeholder="Продукт">
+                <input type="number" value="{{ grams }}" placeholder="Грамм" min="0">
+                <button onclick="this.parentElement.remove()">✕</button>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="btn-row">
+            <button class="btn" onclick="addBasketRow()">+ Добавить продукт</button>
+            <button class="btn btn-primary" onclick="calculate()">🔍 Сравнить цены</button>
+            <button class="btn" onclick="scrapeAll()">🔄 Обновить цены</button>
+        </div>
+    </div>
+
+    <div id="results" class="results">
+        <div class="loading">Выберите состав корзины и нажмите «Сравнить цены»</div>
+    </div>
+</div>
+
+<script>
+function getBasketItems() {
+    const rows = document.querySelectorAll('#basket-items .basket-row');
+    const items = {};
+    rows.forEach(row => {
+        const inputs = row.querySelectorAll('input');
+        const name = inputs[0].value.trim();
+        const grams = parseInt(inputs[1].value) || 0;
+        if (name && grams > 0) items[name] = grams;
+    });
+    return items;
+}
+
+function addBasketRow() {
+    const div = document.createElement('div');
+    div.className = 'basket-row';
+    div.innerHTML = `
+        <input type="text" placeholder="Продукт">
+        <input type="number" value="200" placeholder="Грамм" min="0">
+        <button onclick="this.parentElement.remove()">✕</button>`;
+    document.getElementById('basket-items').appendChild(div);
+}
+
+async function calculate() {
+    const items = getBasketItems();
+    if (Object.keys(items).length === 0) {
+        alert('Добавьте хотя бы один продукт в корзину');
+        return;
+    }
+
+    document.getElementById('results').innerHTML = '<div class="loading">Считаем...</div>';
+
+    const resp = await fetch('/api/basket/calculate', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({items})
+    });
+    const data = await resp.json();
+
+    if (!data.basket || data.basket.length === 0) {
+        document.getElementById('results').innerHTML =
+            '<div class="loading">Нет данных. Запустите «Обновить цены» для загрузки демо-данных.</div>';
+        return;
+    }
+
+    let html = '';
+    data.basket.forEach((store, idx) => {
+        const bestClass = idx === 0 && store.total > 0 ? 'best' : '';
+        const calOk = store.calories >= data.daily_target * 0.7;
+        const calColor = calOk ? '#00c853' : '#ff6b6b';
+
+        html += `<div class="store-card ${bestClass}">
+            <h3>${idx === 0 && store.total > 0 ? '⭐ ' : ''}${store.store} (${store.city})</h3>
+            <div class="total">${store.total.toFixed(2)} ₽</div>
+            <div class="calories" style="color:${calColor}">🔥 ${store.calories} ккал / ${data.daily_target} целевых</div>`;
+
+        if (store.missing.length > 0) {
+            html += `<p class="missing">❌ Не найдено: ${store.missing.join(', ')}</p>`;
+        }
+
+        if (store.items.length > 0) {
+            html += `<table>
+                <tr><th>Продукт</th><th>Грамм</th><th>Упаковок</th><th>Цена/уп</th><th>Стоимость</th><th>ккал/100г</th><th>Состав</th></tr>`;
+            store.items.forEach(item => {
+                html += `<tr>
+                    <td>${item.product}</td>
+                    <td>${item.grams}г</td>
+                    <td>${item.packs}</td>
+                    <td>${item.price_per_pack} ₽</td>
+                    <td>${item.cost} ₽</td>
+                    <td>${item.calories_per_100g}</td>
+                    <td class="composition" title="${item.composition}">${item.composition}</td>
+                </tr>`;
+            });
+            html += '</table>';
+        }
+
+        html += '</div>';
+    });
+
+    document.getElementById('results').innerHTML = html;
+}
+
+async function scrapeAll() {
+    document.getElementById('results').innerHTML = '<div class="loading">Обновляем цены...</div>';
+    // В реальном проекте — вызов /api/scrape для каждого магазина
+    const stores = ['Пятёрочка', 'Магнит', 'Лента', 'Ашан', 'Spar'];
+    for (const name of stores) {
+        await fetch('/api/scrape', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({store_name: name})
+        });
+    }
+    calculate();
+}
+</script>
+</body>
+</html>
