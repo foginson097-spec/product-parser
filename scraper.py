@@ -1,21 +1,16 @@
-"""ПродСкаут — Camofox Scraper Engine.
+"""ПродСкаут — Camofox Scraper Engine v2.
 Uses Playwright + Camofox for anti-detection browser automation.
-Магнит: real-time scraping (working). Others: demo mode with Camofox-ready stubs.
+Магнит: scrapes homepage product cards. Others: demo mode.
 """
 
-import os
+import os, re
 from datetime import datetime
 from models import db, Store, Product, Category, Price, ScrapeLog
-
-# Playwright imports
-from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
-
-MAGNIT_URL = "https://magnit.ru"
-MAGNIT_CATALOG = "https://magnit.ru/catalog/"
+from playwright.sync_api import sync_playwright
 
 
 def scrape_magnit(store: Store) -> dict:
-    """Real-time scraping of Магнит using Camofox/Playwright."""
+    """Scrape Magnit homepage — extract product cards from recommendations."""
     log = ScrapeLog(store_id=store.id, started_at=datetime.utcnow())
     count = 0
     errors = []
@@ -24,164 +19,158 @@ def scrape_magnit(store: Store) -> dict:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
             page = browser.new_page()
-            page.set_default_timeout(15000)
+            page.set_default_timeout(20000)
 
-            # Search products one by one — more reliable than category navigation
-            search_terms = ["молоко", "хлеб", "яйца", "курица", "гречка", "картофель", 
-                          "помидоры", "огурцы", "яблоки", "бананы", "масло подсолнечное",
-                          "сахар", "творог", "сыр", "рис", "сметана", "кефир", "макароны"]
+            # 1. Load homepage
+            page.goto("https://magnit.ru", wait_until="domcontentloaded")
+            page.wait_for_timeout(5000)
 
-            for term in search_terms:
+            # 2. Dismiss location popup if present
+            try:
+                dismiss_btn = page.query_selector('button:has-text("Не сейчас")')
+                if dismiss_btn: dismiss_btn.click(); page.wait_for_timeout(1000)
+            except: pass
+
+            # 3. Extract ALL product cards from the page
+            # Magnit uses <article> elements for product cards
+            cards = page.query_selector_all("article")
+
+            for card in cards[:30]:
                 try:
-                    search_url = f"https://magnit.ru/catalog/?q={term}"
-                    page.goto(search_url, wait_until="domcontentloaded")
+                    text = (card.inner_text() or "").strip()
+                    lines = [l.strip() for l in text.split("\n") if l.strip()]
+
+                    # Find price (contains ₽)
+                    price_line = ""
+                    for line in lines:
+                        if "₽" in line:
+                            price_line = line
+                            break
+                    if not price_line: continue
+
+                    price_rub = _parse_price(price_line)
+                    if price_rub <= 0: continue
+
+                    # Find name — longest line without ₽, before the price
+                    name = ""
+                    price_idx = lines.index(price_line) if price_line in lines else -1
+                    for line in lines[:price_idx]:
+                        if "₽" not in line and len(line) > len(name) and len(line) > 5:
+                            name = line[:120]
+                    if not name: continue
+
+                    # Try to get product link
+                    link_el = card.query_selector("a[href]")
+                    product_url = ""
+                    if link_el:
+                        href = link_el.get_attribute("href") or ""
+                        product_url = href if href.startswith("http") else f"https://magnit.ru{href}"
+
+                    # Save
+                    cat = Category.query.filter_by(slug="products").first()
+                    if not cat:
+                        cat = Category(name="Продукты", slug="products")
+                        db.session.add(cat); db.session.flush()
+
+                    product = Product.query.filter_by(name=name).first()
+                    if not product:
+                        product = Product(name=name, category_id=cat.id)
+                        db.session.add(product); db.session.flush()
+
+                    _save_price(product.id, store.id, price_rub, url=product_url)
+                    count += 1
+                except: continue
+
+            # 4. Also scrape specific category pages that are known to work
+            category_urls = [
+                "https://magnit.ru/catalog/molochnye-produkty-yaico",
+                "https://magnit.ru/catalog/ovoshchi-frukty",
+                "https://magnit.ru/catalog/khleb-vypechka",
+            ]
+            for cat_url in category_urls[:2]:  # Limit to 2 categories to avoid timeout
+                try:
+                    page.goto(cat_url, wait_until="domcontentloaded")
                     page.wait_for_timeout(3000)
-
-                    # Try to find product cards
-                    cards = page.query_selector_all('article a[href*="/product/"], [class*="card"] a[href*="/product/"], a[href*="/product/"]')
-                    
-                    if not cards:
-                        # Fallback: look for any product links
-                        cards = page.query_selector_all('a[href*="product"]')
-
-                    for card in cards[:3]:  # Max 3 per search
+                    cards2 = page.query_selector_all("article")
+                    for card in cards2[:10]:
                         try:
-                            href = card.get_attribute("href") or ""
-                            name = (card.inner_text() or "").strip().split("\n")[0][:80]
-                            
-                            if not name or len(name) < 3:
-                                continue
+                            text = (card.inner_text() or "").strip()
+                            price_rub = _parse_price(text)
+                            if price_rub <= 0: continue
+                            name = text.split("\n")[0][:120] if "\n" in text else text[:120]
+                            if len(name) < 5: continue
 
-                            # Get price from parent container
-                            parent = card
-                            for _ in range(3):
-                                parent_el = parent.query_selector('xpath=..')
-                                if not parent_el: break
-                                parent = parent_el
-                                price_text = (parent.inner_text() or "")
-                                if "₽" in price_text:
-                                    break
-
-                            price_rub = _parse_price(price_text) if "₽" in (price_text or "") else 0
-                            if price_rub <= 0:
-                                continue
-
-                            product_url = href if href.startswith("http") else f"https://magnit.ru{href}"
-                            
-                            # Get or create "Продукты" category
-                            db_cat = Category.query.filter_by(slug="products").first()
-                            if not db_cat:
-                                db_cat = Category(name="Продукты", slug="products")
-                                db.session.add(db_cat)
-                                db.session.flush()
-
+                            cat_obj = Category.query.filter_by(slug="products").first()
                             product = Product.query.filter_by(name=name).first()
                             if not product:
-                                product = Product(name=name, category_id=db_cat.id)
-                                db.session.add(product)
-                                db.session.flush()
-
-                            _save_price(product.id, store.id, price_rub, url=product_url)
+                                product = Product(name=name, category_id=cat_obj.id)
+                                db.session.add(product); db.session.flush()
+                            _save_price(product.id, store.id, price_rub)
                             count += 1
-                        except:
-                            continue
+                        except: continue
                 except Exception as e:
-                    errors.append(f"{term}: {str(e)[:40]}")
-                    continue
+                    errors.append(str(e)[:60])
 
             browser.close()
 
         log.products_found = count
         log.errors = "; ".join(errors) if errors else None
         log.finished_at = datetime.utcnow()
-        db.session.add(log)
-        db.session.commit()
+        db.session.add(log); db.session.commit()
 
-        # Update store status
         store.last_scrape_at = datetime.utcnow()
         store.scrape_status = "ok" if count > 0 else "empty"
-        store.products_scraped = count
+        store.products_scraped = Price.query.filter_by(store_id=store.id).count()
         db.session.commit()
 
         return {"products_found": count, "errors": "; ".join(errors) if errors else ""}
 
     except Exception as e:
         db.session.rollback()
-        log.errors = str(e)[:500]
-        log.finished_at = datetime.utcnow()
-        db.session.add(log)
+        log.errors = str(e)[:500]; log.finished_at = datetime.utcnow()
+        db.session.add(log); db.session.commit()
+        store.scrape_status = "error"; store.last_scrape_at = datetime.utcnow()
         db.session.commit()
-
-        store.scrape_status = "error"
-        store.last_scrape_at = datetime.utcnow()
-        db.session.commit()
-
         return {"products_found": count, "errors": str(e)[:200]}
 
 
 def update_demo_prices(store: Store) -> int:
-    """Update demo prices for stores without Camofox parser yet."""
     import random
     products = Product.query.all()
     updated = 0
     for product in products:
-        existing = Price.query.filter_by(
-            product_id=product.id, store_id=store.id
-        ).order_by(Price.scraped_at.desc()).first()
-        if existing:
+        existing = Price.query.filter_by(product_id=product.id, store_id=store.id).order_by(Price.scraped_at.desc()).first()
+        if existing and existing.price_rub > 0:
             variation = 1.0 + random.uniform(-0.08, 0.08)
             existing.price_rub = round(existing.price_rub * variation, 2)
             existing.scraped_at = datetime.utcnow()
-            existing.in_stock = random.random() > 0.05
             updated += 1
     db.session.commit()
-
-    store.last_scrape_at = datetime.utcnow()
-    store.scrape_status = "demo"
-    store.products_scraped = updated
-    db.session.commit()
+    store.last_scrape_at = datetime.utcnow(); store.scrape_status = "demo"
+    store.products_scraped = updated; db.session.commit()
     return updated
 
 
 def _save_price(product_id: int, store_id: int, price_rub: float, url: str = "") -> None:
-    existing = Price.query.filter_by(
-        product_id=product_id, store_id=store_id
-    ).order_by(Price.scraped_at.desc()).first()
-
+    existing = Price.query.filter_by(product_id=product_id, store_id=store_id).order_by(Price.scraped_at.desc()).first()
     if existing:
-        existing.price_rub = price_rub
-        existing.scraped_at = datetime.utcnow()
-        existing.in_stock = True
-        if url:
-            existing.url = url
+        existing.price_rub = price_rub; existing.scraped_at = datetime.utcnow(); existing.in_stock = True
+        if url: existing.url = url
     else:
-        db.session.add(Price(
-            product_id=product_id, store_id=store_id,
-            price_rub=price_rub, in_stock=True, url=url
-        ))
+        db.session.add(Price(product_id=product_id, store_id=store_id, price_rub=price_rub, in_stock=True, url=url))
 
 
 def _parse_price(text: str) -> float:
-    """Extract price from text like '109.99₽' or '89,99 ₽'."""
-    import re
     clean = text.replace(",", ".").replace(" ", "").replace("₽", "").replace("руб", "")
     match = re.search(r'[\d.]+', clean)
-    if match:
-        return float(match.group())
-    return 0.0
+    return float(match.group()) if match else 0.0
 
 
-STORE_SCRAPERS = {
-    "Магнит": scrape_magnit,
-    # Пятёрочка, Перекрёсток: Camofox-ready but IP-blocked (X5 Group)
-    # Spar, ВкусВилл, Бристоль: demo mode
-}
+STORE_SCRAPERS = {"Магнит": scrape_magnit}
 
 
 def scrape_store(store: Store) -> dict:
     scraper = STORE_SCRAPERS.get(store.name)
-    if scraper:
-        return scraper(store)
-    else:
-        count = update_demo_prices(store)
-        return {"products_found": count, "errors": "", "note": "demo mode"}
+    if scraper: return scraper(store)
+    count = update_demo_prices(store)
+    return {"products_found": count, "errors": "", "note": "demo"}
