@@ -3,54 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Корзина еды — сравнение цен</title>
+    <title>{{ app_name }} — сравнение цен на продукты</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #1a1a2e; color: #e0e0e0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d1117; color: #c9d1d9; }
         .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-        h1 { color: #e94560; margin-bottom: 10px; }
-        .subtitle { color: #888; margin-bottom: 30px; }
+        .logo { font-size: 28px; font-weight: 900; color: #58a6ff; margin-bottom: 4px; }
+        .logo span { color: #f0883e; }
+        .subtitle { color: #8b949e; font-size: 13px; margin-bottom: 24px; }
 
-        .basket-editor { background: #16213e; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
-        .basket-editor h2 { margin-bottom: 15px; color: #0f3460; }
+        /* Status panel */
+        .status-panel { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 16px; margin-bottom: 20px; }
+        .status-panel h2 { color: #8b949e; font-size: 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .status-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+        .status-card { background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 4px; }
+        .status-card .store-name { font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+        .status-card .status-line { font-size: 12px; color: #8b949e; }
+        .status-card .time { font-size: 11px; color: #484f58; }
+        .status-ok { color: #3fb950; }
+        .status-error { color: #f85149; }
+        .status-demo { color: #d2991d; }
+        .status-pending { color: #8b949e; }
+
+        .basket-editor { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+        .basket-editor h2 { margin-bottom: 15px; color: #c9d1d9; font-size: 16px; }
         .basket-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
-        .basket-row input { flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #333; background: #0f3460; color: #fff; }
-        .basket-row input[type=number] { flex: 0 0 100px; }
-        .basket-row button { background: #e94560; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
-        .basket-row button:hover { background: #c73a52; }
-        .btn-row { display: flex; gap: 10px; margin-top: 10px; }
-        .btn { background: #0f3460; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; }
-        .btn-primary { background: #e94560; }
-        .btn-primary:hover { background: #c73a52; }
+        .basket-row input { flex: 1; padding: 8px 12px; border-radius: 6px; border: 1px solid #30363d; background: #0d1117; color: #c9d1d9; }
+        .basket-row input[type=number] { flex: 0 0 100px; text-align: center; }
+        .basket-row button { background: #21262d; color: #f85149; border: 1px solid #30363d; padding: 8px 12px; border-radius: 6px; cursor: pointer; }
+        .btn-row { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+        .btn { background: #21262d; color: #c9d1d9; border: 1px solid #30363d; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        .btn-primary { background: #238636; color: #fff; border-color: #238636; }
+        .btn-primary:hover { background: #2ea043; }
         .btn:hover { opacity: 0.9; }
+        .btn-warn { background: #9e6a03; color: #fff; border-color: #9e6a03; }
 
         .results { margin-top: 20px; }
-        .store-card { background: #16213e; border-radius: 12px; padding: 20px; margin-bottom: 15px; border-left: 4px solid #e94560; }
-        .store-card.best { border-left-color: #00c853; }
-        .store-card h3 { color: #e94560; margin-bottom: 5px; }
-        .store-card .total { font-size: 24px; font-weight: bold; color: #e94560; margin: 10px 0; }
-        .store-card.best .total { color: #00c853; }
-        .store-card .calories { color: #888; margin-bottom: 10px; }
+        .store-card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 20px; margin-bottom: 15px; }
+        .store-card.best { border-color: #238636; }
+        .store-card h3 { color: #58a6ff; margin-bottom: 5px; font-size: 18px; }
+        .store-card .total { font-size: 28px; font-weight: bold; color: #58a6ff; margin: 8px 0; }
+        .store-card.best .total { color: #3fb950; }
+        .store-card .calories { margin-bottom: 10px; font-size: 14px; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #0f3460; }
-        th { color: #888; font-weight: normal; font-size: 12px; }
-        .missing { color: #ff6b6b; font-style: italic; }
-        .composition { font-size: 11px; color: #666; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .loading { text-align: center; padding: 40px; color: #888; }
-
-        @media (max-width: 768px) {
-            .basket-row { flex-wrap: wrap; }
-            .container { padding: 10px; }
-        }
+        th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #21262d; font-size: 13px; }
+        th { color: #8b949e; font-weight: normal; font-size: 11px; text-transform: uppercase; }
+        td a { color: #58a6ff; text-decoration: none; }
+        td a:hover { text-decoration: underline; }
+        .missing { color: #f85149; font-style: italic; font-size: 13px; }
+        .loading { text-align: center; padding: 40px; color: #8b949e; }
     </style>
 </head>
 <body>
 <div class="container">
-    <h1>🛒 Корзина еды</h1>
-    <p class="subtitle">Сравнение цен на продукты в магазинах Дзержинска (Нижегородская обл.). Дневная норма: {{ daily_calories }} ккал.</p>
+    <div class="logo">{{ app_name }}<span>.app</span></div>
+    <p class="subtitle">{{ app_subtitle }}</p>
+
+    <!-- Status Panel -->
+    <div class="status-panel">
+        <h2>📡 Статус парсинга</h2>
+        <div class="status-grid" id="status-grid">
+            <div class="status-card"><span class="status-pending">Загрузка...</span></div>
+        </div>
+    </div>
 
     <div class="basket-editor">
-        <h2>Состав корзины (грамм на день)</h2>
+        <h2>🛒 Состав корзины (грамм на день, норма: {{ daily_calories }} ккал)</h2>
         <div id="basket-items">
             {% for name, grams in default_basket.items() %}
             <div class="basket-row">
@@ -61,18 +79,37 @@
             {% endfor %}
         </div>
         <div class="btn-row">
-            <button class="btn" onclick="addBasketRow()">+ Добавить продукт</button>
+            <button class="btn" onclick="addBasketRow()">+ Добавить</button>
             <button class="btn btn-primary" onclick="calculate()">🔍 Сравнить цены</button>
-            <button class="btn" onclick="scrapeAll()">🔄 Обновить цены</button>
+            <button class="btn btn-warn" onclick="scrapeAll()">🔄 Обновить цены</button>
         </div>
     </div>
 
     <div id="results" class="results">
-        <div class="loading">Выберите состав корзины и нажмите «Сравнить цены»</div>
+        <div class="loading">Добавьте продукты и нажмите «Сравнить цены»</div>
     </div>
 </div>
 
 <script>
+async function loadStatus() {
+    try {
+        const resp = await fetch('/api/status');
+        const stores = await resp.json();
+        let html = '';
+        stores.forEach(s => {
+            const time = s.last_scrape ? new Date(s.last_scrape).toLocaleString('ru-RU') : 'никогда';
+            const statusClass = s.status === 'ok' ? 'status-ok' : s.status === 'error' ? 'status-error' : s.status === 'demo' ? 'status-demo' : 'status-pending';
+            html += `<div class="status-card">
+                <div class="store-name">${s.icon} ${s.name}</div>
+                <div class="status-line ${statusClass}">${s.products_scraped} товаров</div>
+                <div class="time">${time}</div>
+            </div>`;
+        });
+        document.getElementById('status-grid').innerHTML = html;
+    } catch(e) { document.getElementById('status-grid').innerHTML = '<div class="status-card"><span class="status-error">Ошибка</span></div>'; }
+}
+loadStatus(); setInterval(loadStatus, 30000);
+
 function getBasketItems() {
     const rows = document.querySelectorAll('#basket-items .basket-row');
     const items = {};
@@ -86,86 +123,51 @@ function getBasketItems() {
 }
 
 function addBasketRow() {
-    const div = document.createElement('div');
-    div.className = 'basket-row';
-    div.innerHTML = `
-        <input type="text" placeholder="Продукт">
-        <input type="number" value="200" placeholder="Грамм" min="0">
-        <button onclick="this.parentElement.remove()">✕</button>`;
+    const div = document.createElement('div'); div.className = 'basket-row';
+    div.innerHTML = '<input type="text" placeholder="Продукт"><input type="number" value="200" placeholder="Грамм" min="0"><button onclick="this.parentElement.remove()">✕</button>';
     document.getElementById('basket-items').appendChild(div);
 }
 
 async function calculate() {
     const items = getBasketItems();
-    if (Object.keys(items).length === 0) {
-        alert('Добавьте хотя бы один продукт в корзину');
-        return;
-    }
-
+    if (!Object.keys(items).length) { alert('Добавьте продукты'); return; }
     document.getElementById('results').innerHTML = '<div class="loading">Считаем...</div>';
-
-    const resp = await fetch('/api/basket/calculate', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({items})
-    });
+    const resp = await fetch('/api/basket/calculate', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({items}) });
     const data = await resp.json();
-
-    if (!data.basket || data.basket.length === 0) {
-        document.getElementById('results').innerHTML =
-            '<div class="loading">Нет данных. Запустите «Обновить цены» для загрузки демо-данных.</div>';
-        return;
-    }
+    if (!data.basket?.length) { document.getElementById('results').innerHTML = '<div class="loading">Нет данных</div>'; return; }
 
     let html = '';
     data.basket.forEach((store, idx) => {
-        const bestClass = idx === 0 && store.total > 0 ? 'best' : '';
+        const best = idx === 0 && store.total > 0 ? 'best' : '';
         const calOk = store.calories >= data.daily_target * 0.7;
-        const calColor = calOk ? '#00c853' : '#ff6b6b';
-
-        html += `<div class="store-card ${bestClass}">
+        html += `<div class="store-card ${best}">
             <h3>${idx === 0 && store.total > 0 ? '⭐ ' : ''}${store.store} (${store.city})</h3>
             <div class="total">${store.total.toFixed(2)} ₽</div>
-            <div class="calories" style="color:${calColor}">🔥 ${store.calories} ккал / ${data.daily_target} целевых</div>`;
-
-        if (store.missing.length > 0) {
-            html += `<p class="missing">❌ Не найдено: ${store.missing.join(', ')}</p>`;
-        }
-
-        if (store.items.length > 0) {
-            html += `<table>
-                <tr><th>Продукт</th><th>Грамм</th><th>Упаковок</th><th>Цена/уп</th><th>Стоимость</th><th>ккал/100г</th><th>Состав</th></tr>`;
+            <div class="calories" style="color:${calOk ? '#3fb950' : '#f85149'}">🔥 ${store.calories} / ${data.daily_target} ккал</div>`;
+        if (store.missing.length) html += `<p class="missing">❌ ${store.missing.join(', ')}</p>`;
+        if (store.items.length) {
+            html += '<table><tr><th>Продукт</th><th>Грамм</th><th>Упак</th><th>Цена/уп</th><th>Стоимость</th><th>ккал/100г</th></tr>';
             store.items.forEach(item => {
-                html += `<tr>
-                    <td><a href="${item.url}" target="_blank" style="color:#4fc3f7">${item.product}</a></td>
-                    <td>${item.grams}г</td>
-                    <td>${item.packs}</td>
-                    <td>${item.price_per_pack} ₽</td>
-                    <td>${item.cost} ₽</td>
-                    <td>${item.calories_per_100g}</td>
-                    <td class="composition" title="${item.composition}">${item.composition}</td>
-                </tr>`;
+                const link = item.url ? `<a href="${item.url}" target="_blank" title="Открыть в магазине">${item.product}</a>` : item.product;
+                html += `<tr><td>${link}</td><td>${item.grams}г</td><td>${item.packs}</td><td>${item.price_per_pack}₽</td><td>${item.cost}₽</td><td>${item.calories_per_100g}</td></tr>`;
             });
             html += '</table>';
         }
-
         html += '</div>';
     });
-
     document.getElementById('results').innerHTML = html;
 }
 
 async function scrapeAll() {
-    document.getElementById('results').innerHTML = '<div class="loading">Обновляем цены...</div>';
-    // В реальном проекте — вызов /api/scrape для каждого магазина
-    const stores = ['Пятёрочка', 'Магнит', 'Spar', 'Перекрёсток', 'ВкусВилл', 'Бристоль'];
-    for (const name of stores) {
-        await fetch('/api/scrape', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({store_name: name})
-        });
+    document.getElementById('results').innerHTML = '<div class="loading">🔄 Парсим цены через Camofox...</div>';
+    const resp = await fetch('/api/status'); const stores = await resp.json();
+    for (const s of stores) {
+        document.getElementById('results').innerHTML = `<div class="loading">🔄 ${s.name}...</div>`;
+        try {
+            await fetch('/api/scrape', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({store_id: s.id}) });
+        } catch(e) { console.error(e); }
     }
+    loadStatus();
     calculate();
 }
 </script>

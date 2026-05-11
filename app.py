@@ -8,6 +8,10 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///products.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 
+# Branding
+APP_NAME = "ПродСкаут"
+APP_SUBTITLE = "Реальный парсинг цен через Camofox. Магнит — live, остальные — демо."
+
 # Нормы: взрослый человек ~2500 ккал/сутки
 DAILY_CALORIES = 2500
 # Примерный набор продуктов на день с ~2500 ккал (средние значения)
@@ -31,7 +35,8 @@ def index():
     stores = Store.query.filter_by(active=True).all()
     categories = Category.query.all()
     return render_template('index.html', stores=stores, categories=categories,
-                           default_basket=DEFAULT_BASKET, daily_calories=DAILY_CALORIES)
+                           default_basket=DEFAULT_BASKET, daily_calories=DAILY_CALORIES,
+                           app_name=APP_NAME, app_subtitle=APP_SUBTITLE)
 
 @app.route('/api/basket/calculate', methods=['POST'])
 def calculate_basket():
@@ -111,6 +116,24 @@ def calculate_basket():
     
     return jsonify({'basket': result, 'daily_target': DAILY_CALORIES})
 
+@app.route('/api/status', methods=['GET'])
+def scraper_status():
+    """Статус парсинга по всем магазинам."""
+    stores = Store.query.filter_by(active=True).all()
+    result = []
+    for s in stores:
+        status_icon = {"ok": "✅", "empty": "⚠️", "error": "❌", "demo": "🔸", "pending": "⏳"}.get(s.scrape_status, "❓")
+        result.append({
+            "id": s.id,
+            "name": s.name,
+            "status": s.scrape_status or "pending",
+            "icon": status_icon,
+            "last_scrape": s.last_scrape_at.isoformat() if s.last_scrape_at else None,
+            "products_scraped": s.products_scraped or 0,
+            "url": s.url or ""
+        })
+    return jsonify(result)
+
 @app.route('/api/products', methods=['GET'])
 def list_products():
     category = request.args.get('category')
@@ -156,7 +179,18 @@ def trigger_scrape():
     
     # Импорт и запуск скрапера
     from scraper import scrape_store
-    result = scrape_store(store)
+    import asyncio
+    try:
+        result = scrape_store(store)
+    except RuntimeError as e:
+        if 'event loop' in str(e).lower():
+            # Flask already has an event loop — run in thread
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(scrape_store, store)
+                result = future.result(timeout=120)
+        else:
+            raise
     return jsonify(result)
 
 # ---------- SEED DATA ----------

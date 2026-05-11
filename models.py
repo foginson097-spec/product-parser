@@ -10,6 +10,10 @@ class Store(db.Model):
     url = db.Column(db.String(500))
     city = db.Column(db.String(200), default='Нижний Новгород')
     active = db.Column(db.Boolean, default=True)
+    # Scraping status
+    last_scrape_at = db.Column(db.DateTime)
+    scrape_status = db.Column(db.String(50), default='pending')  # pending/ok/empty/error/demo
+    products_scraped = db.Column(db.Integer, default=0)
 
 class Category(db.Model):
     __tablename__ = 'categories'
