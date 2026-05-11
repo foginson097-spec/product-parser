@@ -350,10 +350,30 @@ def seed_default_data():
 
 
 def _get_store_product_url(store_name: str, product_name: str) -> str:
-    """Ссылка на поиск товара в каталоге магазина."""
+    """Ссылка на товар. Магнит — реальные product URL, остальные — поиск."""
     from urllib.parse import quote
+    
+    # Real Magnit product URLs (from Camofox browser)
+    magnit_urls = {
+        'Хлеб белый нарезной': 'https://magnit.ru/product/1000027434-baton_letniy_narez_v_s_0_35kg_p_up_khlebozavod_6',
+        'Хлеб ржаной': 'https://magnit.ru/product/1000027434-baton_letniy_narez_v_s_0_35kg_p_up_khlebozavod_6',
+        'Молоко 3.2%': 'https://magnit.ru/product/1899800733-moloko_prostokvashino_pasterizovannoe_2_5_930ml',
+        'Молоко 2.5%': 'https://magnit.ru/product/1899800733-moloko_prostokvashino_pasterizovannoe_2_5_930ml',
+        'Яйца куриные С0': 'https://magnit.ru/product/2047000014-yaytso_kurinoe_stolovoe_so_10sht',
+        'Куриная грудка': 'https://magnit.ru/product/1000233459-grudka_tsb_okhl_lotok_1_kg_v_lotok_ooo_soyuzptitseprom_5',
+        'Куриное филе': 'https://magnit.ru/product/1000233459-grudka_tsb_okhl_lotok_1_kg_v_lotok_ooo_soyuzptitseprom_5',
+        'Огурцы': 'https://magnit.ru/product/3412110001-ogurtsy_gladkie',
+        'Бананы': 'https://magnit.ru/product/9072651501-banany',
+        'Творог 5%': 'https://magnit.ru/product/1899911997-tvorog_kubanskiy_molochnik_5_180g',
+    }
+    
+    if store_name == 'Магнит':
+        for key, url in magnit_urls.items():
+            if key.lower() in product_name.lower():
+                return url
+    
     encoded = quote(product_name)
-    urls = {
+    search_urls = {
         'Пятёрочка':    f'https://5ka.ru/search/?q={encoded}',
         'Магнит':       f'https://magnit.ru/catalog/?q={encoded}',
         'Spar':         f'https://spar.ru/search/?q={encoded}',
@@ -361,7 +381,7 @@ def _get_store_product_url(store_name: str, product_name: str) -> str:
         'ВкусВилл':     f'https://vkusvill.ru/goods/?q={encoded}',
         'Бристоль':     f'https://bristol.ru/catalog/?q={encoded}',
     }
-    return urls.get(store_name, '')
+    return search_urls.get(store_name, '')
 
 if __name__ == '__main__':
     with app.app_context():
