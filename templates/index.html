@@ -137,7 +137,7 @@ async function calculate() {
                 <tr><th>Продукт</th><th>Грамм</th><th>Упаковок</th><th>Цена/уп</th><th>Стоимость</th><th>ккал/100г</th><th>Состав</th></tr>`;
             store.items.forEach(item => {
                 html += `<tr>
-                    <td>${item.product}</td>
+                    <td><a href="${item.url}" target="_blank" style="color:#4fc3f7">${item.product}</a></td>
                     <td>${item.grams}г</td>
                     <td>${item.packs}</td>
                     <td>${item.price_per_pack} ₽</td>

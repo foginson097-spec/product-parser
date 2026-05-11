@@ -235,20 +235,38 @@ def seed_default_data():
         db.session.add(product)
         db.session.flush()
         
-        # Добавить цены во все магазины
+        # Добавить цены во все магазины со ссылками
         idx = products_data.index(pdata)
         for store in stores:
             if store.name in price_samples:
+                # Генерируем ссылку — поиск товара в каталоге магазина
+                store_url = _get_store_product_url(store.name, pdata[0])
                 price = Price(
                     product_id=product.id,
                     store_id=store.id,
                     price_rub=price_samples[store.name][idx],
-                    in_stock=True
+                    in_stock=True,
+                    url=store_url
                 )
                 db.session.add(price)
     
     db.session.commit()
     print("[Seeder] Added 18 products, 6 stores (Дзержинск), 7 categories.")
+
+
+def _get_store_product_url(store_name: str, product_name: str) -> str:
+    """Ссылка на поиск товара в каталоге магазина."""
+    from urllib.parse import quote
+    encoded = quote(product_name)
+    urls = {
+        'Пятёрочка':    f'https://5ka.ru/search/?q={encoded}',
+        'Магнит':       f'https://magnit.ru/catalog/?q={encoded}',
+        'Spar':         f'https://spar.ru/search/?q={encoded}',
+        'Перекрёсток':  f'https://www.perekrestok.ru/cat/search?q={encoded}',
+        'ВкусВилл':     f'https://vkusvill.ru/goods/?q={encoded}',
+        'Бристоль':     f'https://bristol.ru/catalog/?q={encoded}',
+    }
+    return urls.get(store_name, '')
 
 if __name__ == '__main__':
     with app.app_context():
