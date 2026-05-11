@@ -65,10 +65,14 @@ def scrape_generic(store: Store) -> dict:
     return {'products_found': 0, 'errors': 'Scraper not implemented for ' + store.name}
 
 
-# Registry
+# Registry — все магазины Дзержинска используют заглушку (пока не подключены реальные API/парсеры)
 STORE_SCRAPERS = {
     'Пятёрочка': scrape_pyaterochka,
     'Магнит': scrape_magnit,
+    'Spar': scrape_magnit,          # заглушка
+    'Перекрёсток': scrape_magnit,   # заглушка
+    'ВкусВилл': scrape_magnit,     # заглушка
+    'Бристоль': scrape_magnit,     # заглушка
 }
 
 def scrape_store(store: Store) -> dict:

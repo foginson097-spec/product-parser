@@ -47,7 +47,7 @@
 <body>
 <div class="container">
     <h1>🛒 Корзина еды</h1>
-    <p class="subtitle">Сравнение цен на продукты в магазинах Нижнего Новгорода. Дневная норма: {{ daily_calories }} ккал.</p>
+    <p class="subtitle">Сравнение цен на продукты в магазинах Дзержинска (Нижегородская обл.). Дневная норма: {{ daily_calories }} ккал.</p>
 
     <div class="basket-editor">
         <h2>Состав корзины (грамм на день)</h2>
@@ -158,7 +158,7 @@ async function calculate() {
 async function scrapeAll() {
     document.getElementById('results').innerHTML = '<div class="loading">Обновляем цены...</div>';
     // В реальном проекте — вызов /api/scrape для каждого магазина
-    const stores = ['Пятёрочка', 'Магнит', 'Лента', 'Ашан', 'Spar'];
+    const stores = ['Пятёрочка', 'Магнит', 'Spar', 'Перекрёсток', 'ВкусВилл', 'Бристоль'];
     for (const name of stores) {
         await fetch('/api/scrape', {
             method: 'POST',
