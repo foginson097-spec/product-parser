@@ -193,6 +193,67 @@ def trigger_scrape():
             raise
     return jsonify(result)
 
+@app.route('/api/products/add', methods=['POST'])
+def add_product():
+    """Добавить продукт с ценой (используется Camofox-парсером)."""
+    data = request.get_json()
+    store_id = data.get('store_id')
+    name = data.get('name', '').strip()
+    price_rub = float(data.get('price', 0))
+    category_slug = data.get('category', 'products')
+    
+    if not name or price_rub <= 0:
+        return jsonify({'status': 'error', 'msg': 'name and price required'}), 400
+    
+    # Категория
+    cat = Category.query.filter_by(slug=category_slug).first()
+    if not cat:
+        cat = Category(name=category_slug, slug=category_slug)
+        db.session.add(cat)
+        db.session.flush()
+    
+    # Продукт
+    product = Product.query.filter_by(name=name).first()
+    if not product:
+        product = Product(
+            name=name, category_id=cat.id,
+            weight_grams=float(data.get('weight', 0) or 0),
+            calories_per_100g=float(data.get('kcal', 0) or 0),
+            brand=data.get('brand', ''),
+            composition=data.get('composition', '')
+        )
+        db.session.add(product)
+        db.session.flush()
+    else:
+        # Update existing
+        if data.get('weight'): product.weight_grams = float(data['weight'])
+        if data.get('kcal'): product.calories_per_100g = float(data['kcal'])
+        if data.get('composition'): product.composition = data['composition']
+    
+    # Цена
+    existing = Price.query.filter_by(product_id=product.id, store_id=store_id).order_by(Price.scraped_at.desc()).first()
+    if existing:
+        existing.price_rub = price_rub
+        existing.scraped_at = datetime.utcnow()
+        existing.in_stock = data.get('in_stock', True)
+        if data.get('url'): existing.url = data['url']
+    else:
+        db.session.add(Price(
+            product_id=product.id, store_id=store_id,
+            price_rub=price_rub, in_stock=data.get('in_stock', True),
+            url=data.get('url', '')
+        ))
+    
+    # Update store status
+    store = Store.query.get(store_id)
+    if store:
+        store.last_scrape_at = datetime.utcnow()
+        store.scrape_status = 'ok'
+        store.products_scraped = Price.query.filter_by(store_id=store_id).count()
+    
+    db.session.commit()
+    return jsonify({'status': 'ok', 'product_id': product.id})
+
 # ---------- SEED DATA ----------
 
 def seed_default_data():
